@@ -50,7 +50,7 @@ io.on('connection', (socket) => {
       // send online status to friends
       friends.forEach((friend) => {
         // fetch the friend is online
-        const friendOnline = onlineUsers.find((user) => new mongoose.Types.ObjectId(user.userId).equals(friend._id))?.socketId;
+        const friendOnline = onlineUsers.find((user) => new mongoose.Types.ObjectId(user._id).equals(friend._id))?.socketId;
         if (friendOnline) {
           io.to(friendOnline).emit('userStatusUpdate');
         }
