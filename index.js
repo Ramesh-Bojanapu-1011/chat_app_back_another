@@ -9,9 +9,10 @@ const { dbconnect } = require('./database/mangodb');
 const dotenv = require('dotenv');
 dotenv.config();
 
-
-const siteurl = process.env.NODE_ENV == 'production' ? process.env.SITE_URL : 'http://localhost:3000';
-
+const siteurl =
+  process.env.NODE_ENV == 'production'
+    ? process.env.SITE_URL
+    : 'http://localhost:3000';
 
 const app = express();
 const server = http.createServer(app);
@@ -38,10 +39,13 @@ io.on('connection', (socket) => {
     try {
       dbconnect();
       // Update user's status to online
-      const user = await User.findOneAndUpdate({ clerkId: userId }, {
-        isOnline: true,
-        lastSeen: new Date(),
-      });
+      const user = await User.findOneAndUpdate(
+        { clerkId: userId },
+        {
+          isOnline: true,
+          lastSeen: new Date(),
+        }
+      );
 
       lastSeen = user.lastSeen;
       // find user friends
@@ -50,7 +54,9 @@ io.on('connection', (socket) => {
       // send online status to friends
       friends.forEach((friend) => {
         // fetch the friend is online
-        const friendOnline = onlineUsers.find((user) => new mongoose.Types.ObjectId(user._id).equals(friend._id))?.socketId;
+        const friendOnline = onlineUsers.find((user) =>
+          new mongoose.Types.ObjectId(user._id).equals(friend._id)
+        )?.socketId;
         if (friendOnline) {
           io.to(friendOnline).emit('userStatusUpdate');
         }
@@ -60,11 +66,10 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Send friend request event 
+  // Send friend request event
   socket.on('sendFriendRequest', async (data) => {
     // console.log(data)
     try {
-
       const receiverSocket = onlineUsers.find(
         (user) => user.userId === data.receiverId
       )?.socketId;
@@ -74,27 +79,23 @@ io.on('connection', (socket) => {
       } else {
         console.log('🚫 Receiver Not Online');
       }
-
     } catch {
       console.log('Error sending friend request');
     }
   });
 
   // accept request evnt
-  socket.on('acceptRequest', async (friendId, userId) => {
-
+  socket.on('acceptRequest', async (data) => {
     try {
       const receiverSocket = onlineUsers.find(
-        (user) => user.userId === friendId
+        (user) => user.userId === data.friend
       )?.socketId;
       const senderSocket = onlineUsers.find(
-        (user) => user.userId === userId
+        (user) => user.userId === data.user
       )?.socketId;
-
 
       io.to(receiverSocket).emit('requestUpdate');
       io.to(senderSocket).emit('requestUpdate');
-
     } catch {
       console.log('Error accepting friend request');
     }
@@ -188,10 +189,13 @@ io.on('connection', (socket) => {
       console.log('Updated Online Users:', onlineUsers);
       const user = userid.userId;
       try {
-        await User.findOneAndUpdate({ clerkId: userid.userId }, {
-          isOnline: false,
-          lastSeen: new Date(),
-        });
+        await User.findOneAndUpdate(
+          { clerkId: userid.userId },
+          {
+            isOnline: false,
+            lastSeen: new Date(),
+          }
+        );
 
         // Notify others that the user is offline
         io.emit(
