@@ -100,34 +100,19 @@ io.on("connection", (socket) => {
       console.log("Error accepting friend request");
     }
   });
+
   // Send message event
   socket.on("sendMessage", async (data) => {
     try {
       dbconnect();
-      const { senderId, receiverId } = data;
       console.log("📩 Message Received:", data);
-      // Ensure senderId and receiverId are not arrays and are strings
-      const senderIdStr = Array.isArray(senderId) ? senderId[0] : senderId;
-      const receiverIdStr = Array.isArray(receiverId)
-        ? receiverId[0]
-        : receiverId;
 
-      const finalmsg = await MessageSchema.find({
-        $or: [
-          { senderId: senderId, receiverId: receiverId },
-          { senderId: receiverId, receiverId: senderId },
-        ],
-      })
-        .populate("senderId", "username email") // Populate sender details
-        .populate("receiverId", "username email") // Populate receiver details
-        .sort({ createdAt: -1 }) // Sort by creation date in descending order
-        .limit(1);
+      const finalmsg = await MessageSchema.findById(data.data[0]._id)
+        .populate("senderId", "username image_url clerkId email") // Populate sender details
+        .populate("receiverId", "username image_url clerkId email"); // Populate receiver details
 
-      const senderSocket = onlineUsers.find(
-        (user) => user.userId === senderIdStr._id,
-      )?.socketId;
       const receiverSocket = onlineUsers.find(
-        (user) => user.userId === receiverIdStr._id,
+        (user) => user.userId === data.data[0].receiverId.clerkId,
       )?.socketId;
 
       if (receiverSocket) {
@@ -198,10 +183,7 @@ io.on("connection", (socket) => {
         );
 
         // Notify others that the user is offline
-        io.emit(
-          "userStatusUpdate",
-          // { userId: userid.userId, isOnline: false, lastSeen: new Date() }
-        );
+        io.emit("userStatusUpdate");
       } catch (error) {
         console.error("❌ Error updating last seen:", error);
       }
