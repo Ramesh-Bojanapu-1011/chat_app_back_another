@@ -48,21 +48,26 @@ io.on("connection", (socket) => {
       );
 
       lastSeen = user.lastSeen;
+      console.log("🟢 User Online:", userId);
       // find user friends
       const friends = await User.find({ _id: { $in: user.friends } });
-      // console.log(friends)
+      // console.log("👥 Friends:", friends);
       // send online status to friends
       friends.forEach((friend) => {
         // fetch the friend is online
-        const friendOnline = onlineUsers.find((user) =>
-          new mongoose.Types.ObjectId(user._id).equals(friend._id),
-        )?.socketId;
+        const friendOnline = onlineUsers.find((user) => {
+          return (user.userId = friend.clerkId);
+        })?.socketId;
+
         if (friendOnline) {
+          console.log("🟢 Friend Online:", friendOnline);
           io.to(friendOnline).emit("userStatusUpdate");
+        } else {
+          console.log("🚫 Friend Not Online");
         }
       });
-    } catch {
-      console.log("Error updating user status");
+    } catch (error) {
+      console.log("Error updating user status", error);
     }
   });
 
@@ -175,7 +180,7 @@ io.on("connection", (socket) => {
       const user = userid.userId;
       try {
         await User.findOneAndUpdate(
-          { clerkId: userid.userId },
+          { clerkId: user },
           {
             isOnline: false,
             lastSeen: new Date(),
