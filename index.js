@@ -56,7 +56,7 @@ io.on("connection", (socket) => {
       friends.forEach((friend) => {
         // fetch the friend is online
         const friendOnline = onlineUsers.find((user) => {
-          return (user.userId = friend.clerkId);
+          return user.userId == friend.clerkId;
         })?.socketId;
 
         if (friendOnline) {
@@ -122,8 +122,8 @@ io.on("connection", (socket) => {
 
       if (receiverSocket) {
         console.log("receiverId", receiverSocket);
-        console.log("📨 Sending to Receiver:", receiverSocket);
-        console.log("Final message:", finalmsg);
+        // console.log("📨 Sending to Receiver:", receiverSocket);
+        // console.log("Final message:", finalmsg);
         io.to(receiverSocket).emit("receiveMessage", finalmsg);
         io.to(receiverSocket).emit("unreadcount");
       } else {
@@ -133,10 +133,15 @@ io.on("connection", (socket) => {
       console.error("❌ Error sending message:", error);
     }
   });
+
   socket.on("markAsRead", async ({ messageId }) => {
     try {
       dbconnect();
-      const message = await MessageSchema.findById(messageId);
+      const message = await MessageSchema.findById(messageId)
+        .populate("receiverId")
+        .populate("senderId");
+      
+        console.log("📝 Marking as read:", message);
 
       if (!message || message.isRead) return;
 
@@ -146,12 +151,12 @@ io.on("connection", (socket) => {
 
       console.log("📨 Marking message as read:", message);
 
-      const senderSocket = onlineUsers.find((user) =>
-        new mongoose.Types.ObjectId(user.userId).equals(message.senderId),
-      )?.socketId;
-      const receiverSocket = onlineUsers.find((user) =>
-        new mongoose.Types.ObjectId(user.userId).equals(message.receiverId),
-      )?.socketId;
+      const senderSocket = onlineUsers.find((user) => {
+        return user.userId == message.senderId.clerkId;
+      })?.socketId;
+      const receiverSocket = onlineUsers.find((user) =>{
+        return user.userId==message.receiverId.clerkId;
+      })?.socketId;
 
       if (senderSocket) {
         console.log("sender socket", senderSocket);
