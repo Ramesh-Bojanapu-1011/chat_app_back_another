@@ -1,7 +1,6 @@
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
-const mongoose = require("mongoose");
 const MessageSchema = require("./models/message");
 const User = require("./models/user");
 
@@ -140,8 +139,8 @@ io.on("connection", (socket) => {
       const message = await MessageSchema.findById(messageId)
         .populate("receiverId")
         .populate("senderId");
-      
-        console.log("📝 Marking as read:", message);
+
+      console.log("📝 Marking as read:", message);
 
       if (!message || message.isRead) return;
 
@@ -154,8 +153,8 @@ io.on("connection", (socket) => {
       const senderSocket = onlineUsers.find((user) => {
         return user.userId == message.senderId.clerkId;
       })?.socketId;
-      const receiverSocket = onlineUsers.find((user) =>{
-        return user.userId==message.receiverId.clerkId;
+      const receiverSocket = onlineUsers.find((user) => {
+        return user.userId == message.receiverId.clerkId;
       })?.socketId;
 
       if (senderSocket) {
