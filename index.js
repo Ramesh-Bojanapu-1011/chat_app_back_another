@@ -3,6 +3,7 @@ const http = require("http");
 const { Server } = require("socket.io");
 const MessageSchema = require("./models/message");
 const GroupSchema = require("./models/group");
+const GroupMessages = require("./models/grpmessages");
 const User = require("./models/user");
 
 const { dbconnect } = require("./database/mangodb");
@@ -135,53 +136,6 @@ io.on("connection", (socket) => {
     }
   });
 
-  // create group event
-  socket.on("createGroup", async (data) => {
-    try {
-      console.log(data.newGroup._id);
-      const newGroup = await GroupSchema.findById(data.newGroup._id).populate(
-        "users_in_grp",
-        "clerkId",
-      );
-
-      console.log(newGroup);
-
-      // find socketId for newGroup.users_in_grp
-      const sockets = onlineUsers.filter((user) =>
-        newGroup.users_in_grp.map((grpuser) => grpuser.clerkId == user.userId),
-      );
-
-      sockets.forEach((socket) => {
-        io.to(socket.socketId).emit("newGroup", data);
-      });
-    } catch (error) {
-      console.error("❌ Error creating group:", error);
-    }
-  });
-
-  // create group event
-  socket.on("SendGroupmessage", async (data) => {
-    try {
-      // console.log(data.data.receiverId);
-
-      const userIds = data.data.receiverId.map((grpuser) => grpuser.clerkId);
-      // console.log(userIds);
-
-      const sockets = onlineUsers.filter((user) =>
-        userIds.map((grpuser) => {
-          // console.log(grpuser)
-          return grpuser == user.userId;
-        }),
-      );
-
-      sockets.forEach((socket) => {
-        io.to(socket.socketId).emit("ReceiveGrpMessage", data);
-      });
-    } catch (error) {
-      console.error("❌ Error creating group:", error);
-    }
-  });
-
   socket.on("markAsRead", async ({ messageId }) => {
     try {
       dbconnect();
@@ -218,6 +172,94 @@ io.on("connection", (socket) => {
       }
     } catch (error) {
       console.error("❌ Error marking message as read:", error);
+    }
+  });
+
+  // create group event
+  socket.on("createGroup", async (data) => {
+    try {
+      console.log(data.newGroup._id);
+      const newGroup = await GroupSchema.findById(data.newGroup._id).populate(
+        "users_in_grp",
+        "clerkId",
+      );
+
+      console.log(newGroup);
+
+      // find socketId for newGroup.users_in_grp
+      const sockets = onlineUsers.filter((user) =>
+        newGroup.users_in_grp.map((grpuser) => grpuser.clerkId == user.userId),
+      );
+
+      sockets.forEach((socket) => {
+        io.to(socket.socketId).emit("newGroup", data);
+      });
+    } catch (error) {
+      console.error("❌ Error creating group:", error);
+    }
+  });
+
+  // create group event
+  socket.on("SendGroupmessage", async (data) => {
+    try {
+      // console.log(data.data);
+
+      const userIds = data.data.receiverId.map((grpuser) => grpuser.clerkId);
+
+      const message = await GroupMessages.findById(data.data._id);
+
+      message.read_byuser.push(data.data.senderId._id);
+      await message.save();
+
+      // console.log(message);
+
+      // console.log(userIds);
+
+      const sockets = onlineUsers.filter((user) =>
+        userIds.map((grpuser) => {
+          // console.log(grpuser)
+          return grpuser == user.userId;
+        }),
+      );
+
+      sockets.forEach((socket) => {
+        io.to(socket.socketId).emit("ReceiveGrpMessage", data);
+      });
+    } catch (error) {
+      console.error("❌ Error creating group:", error);
+    }
+  });
+
+  socket.on("ReadGroupmessage", async (data) => {
+    try {
+      console.log(data);
+      const message = await GroupMessages.findById(data.messageId).populate(
+        "senderId",
+      );
+
+      // if already there in arry then donot push
+      if (!message.read_byuser.includes(data.userId)) {
+        message.read_byuser.push({ _id: data.userId });
+      }
+
+      if (message.read_byuser.length == message.receiverId.length) {
+        message.isRead = true;
+      }
+
+      await message.save();
+
+      const senderSocket = onlineUsers.find((user) => {
+        return user.userId == message.senderId.clerkId;
+      })?.socketId;
+
+      if (senderSocket) {
+        io.to(senderSocket).emit("GrpMsgRead", {
+          messageId: message._id,
+          isRead: message.isRead,
+        });
+      }
+    } catch (error) {
+      console.error("❌ Error creating group:", error);
     }
   });
 
