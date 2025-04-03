@@ -61,7 +61,7 @@ io.on("connection", (socket) => {
         })?.socketId;
 
         if (friendOnline) {
-          console.log("🟢 Friend Online:", friendOnline);
+          // console.log("🟢 Friend Online:", friendOnline);
           io.to(friendOnline).emit("userStatusUpdate");
         } else {
           console.log("🚫 Friend Not Online");
@@ -153,6 +153,29 @@ io.on("connection", (socket) => {
 
       sockets.forEach((socket) => {
         io.to(socket.socketId).emit("newGroup", data);
+      });
+    } catch (error) {
+      console.error("❌ Error creating group:", error);
+    }
+  });
+
+  // create group event
+  socket.on("SendGroupmessage", async (data) => {
+    try {
+      // console.log(data.data.receiverId);
+
+      const userIds = data.data.receiverId.map((grpuser) => grpuser.clerkId);
+      // console.log(userIds);
+
+      const sockets = onlineUsers.filter((user) =>
+        userIds.map((grpuser) => {
+          // console.log(grpuser)
+          return grpuser == user.userId;
+        }),
+      );
+
+      sockets.forEach((socket) => {
+        io.to(socket.socketId).emit("ReceiveGrpMessage", data);
       });
     } catch (error) {
       console.error("❌ Error creating group:", error);
