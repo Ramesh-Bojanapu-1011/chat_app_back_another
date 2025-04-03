@@ -2,10 +2,12 @@ const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
 const MessageSchema = require("./models/message");
+const GroupSchema = require("./models/group");
 const User = require("./models/user");
 
 const { dbconnect } = require("./database/mangodb");
 const dotenv = require("dotenv");
+
 dotenv.config();
 
 const siteurl =
@@ -130,6 +132,30 @@ io.on("connection", (socket) => {
       }
     } catch (error) {
       console.error("❌ Error sending message:", error);
+    }
+  });
+
+  // create group event
+  socket.on("createGroup", async (data) => {
+    try {
+      console.log(data.newGroup._id);
+      const newGroup = await GroupSchema.findById(data.newGroup._id).populate(
+        "users_in_grp",
+        "clerkId",
+      );
+
+      console.log(newGroup);
+
+      // find socketId for newGroup.users_in_grp
+      const sockets = onlineUsers.filter((user) =>
+        newGroup.users_in_grp.map((grpuser) => grpuser.clerkId == user.userId),
+      );
+
+      sockets.forEach((socket) => {
+        io.to(socket.socketId).emit("newGroup", data);
+      });
+    } catch (error) {
+      console.error("❌ Error creating group:", error);
     }
   });
 
