@@ -143,8 +143,6 @@ io.on("connection", (socket) => {
         .populate("receiverId")
         .populate("senderId");
 
-      console.log("📝 Marking as read:", message);
-
       if (!message || message.isRead) return;
 
       message.isRead = true;
@@ -202,7 +200,7 @@ io.on("connection", (socket) => {
   // create group event
   socket.on("SendGroupmessage", async (data) => {
     try {
-      // console.log(data.data);
+      console.log("SendGroupmessage", data.data);
 
       const userIds = data.data.receiverId.map((grpuser) => grpuser.clerkId);
 
@@ -232,7 +230,7 @@ io.on("connection", (socket) => {
 
   socket.on("ReadGroupmessage", async (data) => {
     try {
-      console.log(data);
+      console.log("ReadGroupmessage", data);
       const message = await GroupMessages.findById(data.messageId).populate(
         "senderId",
       );
